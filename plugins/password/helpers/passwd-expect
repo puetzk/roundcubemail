@@ -32,6 +32,7 @@
 # @param -rlogin      use rlogin
 # @param -slogin      use slogin
 # @param -sudo        use sudo
+# @param -su          use su
 # @param -program     command for changing passwords
 #
 # @return             0 on success, 1 on failure
@@ -142,6 +143,9 @@ for {set i 0} {$i<$argc} {incr i} {
     } "-sudo" {
         set login "sudo"
         continue
+    } "-su" {
+        set login "su"
+        continue
     } "-program" {
         incr i
         set program [lindex $argv $i]
@@ -167,6 +171,8 @@ if {[string match $login "rlogin"]} {
    set pid [spawn ssh $host -l $user $program]
 } elseif {[string match $login "sudo"]} {
    set pid [spawn sudo -u $user $program]
+} elseif {[string match $login "su"]} {
+   set pid [spawn su $user -s $program]
 } elseif {[string match $login "telnet"]} {
    set pid [spawn telnet $host]
    expect -re $login_string {
@@ -174,14 +180,18 @@ if {[string match $login "rlogin"]} {
      send "$user\r"
    }
 } else {
-   puts $err "Invalid login mode. Valid modes: rlogin, slogin, ssh, telnet, sudo\n"
+   puts $err "Invalid login mode. Valid modes: rlogin, slogin, ssh, telnet, sudo, su\n"
    close $err
    exit 1
 }
 
 set old_password_notentered true
-
-if {![string match $login "sudo"]} {
+if {[string match $login "su"]} {
+  expect -re $password_string {
+    sleep .5
+    send $password(old)\r
+  }
+} elseif {![string match $login "sudo"]} {
   # log in
   expect {
     -re $fingerprint_string {sleep .5
